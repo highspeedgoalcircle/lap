@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>立言過三關</title>
+    <title>HTML 小遊戲合集</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
         
@@ -12,247 +12,287 @@
             background: linear-gradient(135deg, #1e3a8a, #312e81);
             color: white;
             margin: 0;
-            padding: 20px;
+            padding: 0;
             text-align: center;
         }
+        .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+        h1 { font-size: 48px; margin: 30px 0 10px; }
         
-        h1 { font-size: 42px; margin-bottom: 8px; }
-        .subtitle { font-size: 18px; margin-bottom: 20px; opacity: 0.9; }
-        
-        .mode-select {
-            margin: 20px 0;
+        .menu {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 50px 0;
+            flex-wrap: wrap;
+        }
+        .game-card {
+            background: rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 30px 20px;
+            width: 320px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .game-card:hover {
+            transform: translateY(-15px);
+            background: rgba(245, 158, 11, 0.3);
         }
         
-        .mode-btn {
-            padding: 12px 28px;
+        #game-area { display: none; }
+        button {
+            padding: 12px 30px;
             font-size: 18px;
-            margin: 0 10px;
+            background: #f59e0b;
+            color: black;
             border: none;
             border-radius: 50px;
             cursor: pointer;
-            font-weight: bold;
-        }
-        .mode-btn.active {
-            background: #f59e0b;
-            color: black;
-        }
-        .mode-btn:not(.active) {
-            background: rgba(255,255,255,0.2);
-            color: white;
+            margin: 8px;
         }
         
-        .score-board {
-            display: flex;
-            justify-content: center;
-            gap: 60px;
-            margin: 20px 0;
-            font-size: 22px;
-        }
-        .player { padding: 10px 30px; border-radius: 50px; background: rgba(255,255,255,0.15); }
-        
+        /* 井字遊戲樣式 */
         .board {
-            width: 390px;
-            height: 390px;
-            margin: 30px auto;
+            width: 360px; height: 360px;
+            margin: 20px auto;
             background: #1e2937;
             padding: 15px;
-            border-radius: 28px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
+            border-radius: 20px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
         }
-        
         .cell {
-            width: 110px;
-            height: 110px;
             background: #334155;
-            font-size: 92px;
+            font-size: 90px;
             font-weight: bold;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 16px;
+            border-radius: 12px;
             cursor: pointer;
-            transition: all 0.2s;
-            color: white;
-            flex-shrink: 0;
         }
-        
-        .cell:hover { background: #475569; transform: scale(1.08); }
+        .cell:hover { background: #475569; }
         .cell.x { color: #fbbf24; }
         .cell.o { color: #67e8f9; }
         
-        .status { font-size: 26px; margin: 20px 0; min-height: 40px; }
-        
-        button {
-            padding: 14px 32px;
-            font-size: 18px;
-            background: #f59e0b;
-            color: black;
-            border: none;
-            border-radius: 50px;
-            cursor: pointer;
-            font-weight: bold;
-            margin: 8px;
-        }
+        /* 貪食蛇 */
+        canvas { border: 4px solid #22d3ee; border-radius: 12px; background: #1e2937; }
     </style>
 </head>
 <body>
-    <h1>立言過三關</h1>
-    <p class="subtitle">先贏 3 局即獲得勝利！</p>
-    
-    <div class="mode-select">
-        <button class="mode-btn active" id="pve-btn" onclick="setMode('pve')">對戰電腦</button>
-        <button class="mode-btn" id="pvp-btn" onclick="setMode('pvp')">雙人對戰</button>
+    <div class="container" id="menu">
+        <h1>🕹️ HTML 小遊戲合集</h1>
+        <p style="font-size:20px;">選擇你要玩的遊戲</p>
+        
+        <div class="menu">
+            <div class="game-card" onclick="startGame('tictactoe')">
+                <h2>井字過三關</h2>
+                <p>先贏 3 局獲得勝利！</p>
+            </div>
+            <div class="game-card" onclick="startGame('snake')">
+                <h2>🐍 貪食蛇</h2>
+                <p>經典貪吃蛇，吃越多分數越高</p>
+            </div>
+        </div>
     </div>
-    
-    <div class="score-board">
-        <div class="player">玩家 X <span id="player-score">0</span></div>
-        <div class="player">玩家 O <span id="computer-score">0</span></div>
-    </div>
-    
-    <div class="board" id="board"></div>
-    
-    <div class="status" id="status">你的回合 (X)</div>
-    
-    <div>
-        <button onclick="resetGame()">重新一局</button>
-        <button onclick="resetMatch()">重置比賽</button>
+
+    <!-- 遊戲區域 -->
+    <div id="game-area">
+        <button onclick="backToMenu()" style="margin:15px;">← 返回選單</button>
+        
+        <!-- 井字過三關 -->
+        <div id="tictactoe-container">
+            <h2>井字過三關</h2>
+            <div style="margin:15px 0">
+                <button onclick="setTicMode('pve')" id="pve-btn" class="mode-btn active">對戰電腦</button>
+                <button onclick="setTicMode('pvp')" id="pvp-btn" class="mode-btn">雙人對戰</button>
+            </div>
+            <div style="display:flex;justify-content:center;gap:50px;margin:10px 0;font-size:20px">
+                <div>玩家 X <span id="x-score">0</span></div>
+                <div>玩家 O <span id="o-score">0</span></div>
+            </div>
+            <div id="tic-board" class="board"></div>
+            <div id="tic-status" style="font-size:24px;margin:15px 0">X 的回合</div>
+            <button onclick="resetTicGame()">重新一局</button>
+            <button onclick="resetTicMatch()">重置比賽</button>
+        </div>
+        
+        <!-- 貪食蛇 -->
+        <div id="snake-container" style="display:none">
+            <h2>🐍 貪食蛇</h2>
+            <canvas id="snake-canvas" width="400" height="400"></canvas>
+            <div style="margin:15px 0;font-size:22px">分數: <span id="snake-score">0</span></div>
+            <button onclick="startSnake()">開始新遊戲</button>
+        </div>
     </div>
 
     <script>
-        let boardState = Array(9).fill(null);
-        let currentPlayer = 'X';
-        let gameActive = true;
-        let playerScore = 0;
-        let computerScore = 0;
-        let gameMode = 'pve'; // 'pve' 或 'pvp'
+        let currentGame = '';
+        let ticBoardState = Array(9).fill(null);
+        let ticCurrentPlayer = 'X';
+        let ticGameActive = true;
+        let ticXScore = 0, ticOScore = 0;
+        let ticMode = 'pve';
         
-        const winningConditions = [
-            [0,1,2],[3,4,5],[6,7,8],
-            [0,3,6],[1,4,7],[2,5,8],
-            [0,4,8],[2,4,6]
-        ];
-        
-        const boardEl = document.getElementById('board');
-        const statusEl = document.getElementById('status');
-        
-        function setMode(mode) {
-            gameMode = mode;
-            document.getElementById('pve-btn').classList.toggle('active', mode === 'pve');
-            document.getElementById('pvp-btn').classList.toggle('active', mode === 'pvp');
-            resetGame();
+        // ==================== 主選單 ====================
+        function startGame(game) {
+            document.getElementById('menu').style.display = 'none';
+            document.getElementById('game-area').style.display = 'block';
+            currentGame = game;
+            
+            document.getElementById('tictactoe-container').style.display = game === 'tictactoe' ? 'block' : 'none';
+            document.getElementById('snake-container').style.display = game === 'snake' ? 'block' : 'none';
+            
+            if (game === 'tictactoe') initTicTacToe();
+            if (game === 'snake') initSnake();
         }
         
-        function createBoard() {
-            boardEl.innerHTML = '';
-            boardState = Array(9).fill(null);
-            
+        function backToMenu() {
+            document.getElementById('menu').style.display = 'block';
+            document.getElementById('game-area').style.display = 'none';
+        }
+        
+        // ==================== 井字過三關 ====================
+        function initTicTacToe() {
+            ticBoardState = Array(9).fill(null);
+            ticCurrentPlayer = 'X';
+            ticGameActive = true;
+            createTicBoard();
+        }
+        
+        function createTicBoard() {
+            const board = document.getElementById('tic-board');
+            board.innerHTML = '';
             for (let i = 0; i < 9; i++) {
                 const cell = document.createElement('div');
                 cell.className = 'cell';
                 cell.dataset.index = i;
-                cell.addEventListener('click', () => handleClick(i));
-                boardEl.appendChild(cell);
+                cell.addEventListener('click', () => ticHandleClick(i));
+                board.appendChild(cell);
             }
+            document.getElementById('tic-status').textContent = 'X 的回合';
         }
         
-        function handleClick(index) {
-            if (boardState[index] || !gameActive) return;
-            
-            makeMove(index, currentPlayer);
-            
-            if (gameActive && gameMode === 'pve' && currentPlayer === 'O') {
-                setTimeout(computerMove, 450);
-            }
+        function ticHandleClick(index) {
+            if (ticBoardState[index] || !ticGameActive) return;
+            makeTicMove(index, ticCurrentPlayer);
         }
         
-        function makeMove(index, player) {
-            boardState[index] = player;
-            const cell = boardEl.children[index];
+        function makeTicMove(index, player) {
+            ticBoardState[index] = player;
+            const cell = document.querySelector(`.cell[data-index="${index}"]`);
             cell.textContent = player;
             cell.classList.add(player.toLowerCase());
             
-            if (checkWin(player)) {
-                handleWin(player);
+            if (checkTicWin(player)) {
+                handleTicWin(player);
+                return;
+            }
+            if (!ticBoardState.includes(null)) {
+                document.getElementById('tic-status').textContent = "平局！";
+                setTimeout(initTicTacToe, 1400);
                 return;
             }
             
-            if (!boardState.includes(null)) {
-                handleDraw();
-                return;
-            }
+            ticCurrentPlayer = player === 'X' ? 'O' : 'X';
+            document.getElementById('tic-status').textContent = `${ticCurrentPlayer} 的回合`;
             
-            currentPlayer = player === 'X' ? 'O' : 'X';
-            statusEl.textContent = `${currentPlayer === 'X' ? 'X' : 'O'} 的回合`;
-        }
-        
-        function checkWin(player) {
-            return winningConditions.some(cond => cond.every(i => boardState[i] === player));
-        }
-        
-        function handleWin(player) {
-            gameActive = false;
-            if (player === 'X') playerScore++;
-            else computerScore++;
-            
-            document.getElementById('player-score').textContent = playerScore;
-            document.getElementById('computer-score').textContent = computerScore;
-            
-            statusEl.textContent = player === 'X' ? '🎉 X 獲勝！' : '🎉 O 獲勝！';
-            
-            if (playerScore < 3 && computerScore < 3) {
-                setTimeout(resetGame, 1600);
+            if (ticMode === 'pve' && ticCurrentPlayer === 'O') {
+                setTimeout(computerTicMove, 500);
             }
         }
         
-        function handleDraw() {
-            gameActive = false;
-            statusEl.textContent = "平局！";
-            setTimeout(resetGame, 1400);
+        function checkTicWin(player) {
+            const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+            return wins.some(combo => combo.every(i => ticBoardState[i] === player));
         }
         
-        function computerMove() {
-            if (!gameActive || currentPlayer !== 'O') return;
-            
+        function handleTicWin(player) {
+            ticGameActive = false;
+            if (player === 'X') ticXScore++;
+            else ticOScore++;
+            document.getElementById('x-score').textContent = ticXScore;
+            document.getElementById('o-score').textContent = ticOScore;
+            document.getElementById('tic-status').textContent = player === 'X' ? '🎉 X 獲勝！' : '🎉 O 獲勝！';
+            if (ticXScore < 3 && ticOScore < 3) setTimeout(initTicTacToe, 1600);
+        }
+        
+        function computerTicMove() {
+            if (!ticGameActive || ticCurrentPlayer !== 'O') return;
             // 簡單 AI
             for (let i = 0; i < 9; i++) {
-                if (!boardState[i]) {
-                    boardState[i] = 'O';
-                    if (checkWin('O')) { boardState[i] = null; makeMove(i, 'O'); return; }
-                    boardState[i] = null;
+                if (!ticBoardState[i]) {
+                    ticBoardState[i] = 'O';
+                    if (checkTicWin('O')) { ticBoardState[i] = null; makeTicMove(i, 'O'); return; }
+                    ticBoardState[i] = null;
                 }
             }
-            for (let i = 0; i < 9; i++) {
-                if (!boardState[i]) {
-                    boardState[i] = 'X';
-                    if (checkWin('X')) { boardState[i] = null; makeMove(i, 'O'); return; }
-                    boardState[i] = null;
+            const empty = ticBoardState.map((v,i) => v ? null : i).filter(v => v !== null);
+            if (empty.length) makeTicMove(empty[Math.floor(Math.random()*empty.length)], 'O');
+        }
+        
+        function setTicMode(mode) {
+            ticMode = mode;
+            document.getElementById('pve-btn').classList.toggle('active', mode === 'pve');
+            document.getElementById('pvp-btn').classList.toggle('active', mode === 'pvp');
+            initTicTacToe();
+        }
+        
+        function resetTicGame() { initTicTacToe(); }
+        function resetTicMatch() {
+            ticXScore = ticOScore = 0;
+            document.getElementById('x-score').textContent = '0';
+            document.getElementById('o-score').textContent = '0';
+            initTicTacToe();
+        }
+        
+        // ==================== 貪食蛇 ====================
+        let snakeInterval;
+        function initSnake() {
+            const canvas = document.getElementById('snake-canvas');
+            const ctx = canvas.getContext('2d');
+            let snake = [{x:200,y:200}], dx=20, dy=0, score=0, food={x:300,y:300};
+            
+            function gameLoop() {
+                const head = {x: snake[0].x + dx, y: snake[0].y + dy};
+                if (head.x < 0 || head.x >= 400 || head.y < 0 || head.y >= 400 || 
+                    snake.some(s => s.x === head.x && s.y === head.y)) {
+                    clearInterval(snakeInterval);
+                    alert('遊戲結束！分數：' + score);
+                    return;
                 }
+                snake.unshift(head);
+                if (head.x === food.x && head.y === food.y) {
+                    score += 10;
+                    document.getElementById('snake-score').textContent = score;
+                    food = {x: Math.floor(Math.random()*19)*20, y: Math.floor(Math.random()*19)*20};
+                } else snake.pop();
+                
+                ctx.fillStyle = '#1e2937';
+                ctx.fillRect(0,0,400,400);
+                ctx.fillStyle = '#22d3ee';
+                snake.forEach(s => ctx.fillRect(s.x, s.y, 20, 20));
+                ctx.fillStyle = '#f59e0b';
+                ctx.fillRect(food.x, food.y, 20, 20);
             }
             
-            const empty = boardState.map((v,i) => v ? null : i).filter(v => v !== null);
-            if (empty.length) makeMove(empty[Math.floor(Math.random() * empty.length)], 'O');
+            document.addEventListener('keydown', e => {
+                if (e.key === 'ArrowUp' && dy !== 20) { dx=0; dy=-20; }
+                if (e.key === 'ArrowDown' && dy !== -20) { dx=0; dy=20; }
+                if (e.key === 'ArrowLeft' && dx !== 20) { dx=-20; dy=0; }
+                if (e.key === 'ArrowRight' && dx !== -20) { dx=20; dy=0; }
+            });
+            
+            if (snakeInterval) clearInterval(snakeInterval);
+            snakeInterval = setInterval(gameLoop, 110);
         }
         
-        function resetGame() {
-            createBoard();
-            gameActive = true;
-            currentPlayer = 'X';
-            statusEl.textContent = 'X 的回合';
+        function startSnake() {
+            initSnake();
         }
         
-        function resetMatch() {
-            playerScore = computerScore = 0;
-            document.getElementById('player-score').textContent = '0';
-            document.getElementById('computer-score').textContent = '0';
-            resetGame();
-        }
-        
-        window.onload = () => {
-            createBoard();
-        };
+        // 初始
+        window.onload = () => {};
     </script>
 </body>
 </html>
