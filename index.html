@@ -31,19 +31,19 @@
         .board {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            width: 420px;
-            height: 420px;
+            width: 360px;           /* 縮小一點 */
+            height: 360px;
             margin: 30px auto;
             background: #1e2937;
-            padding: 15px;
+            padding: 12px;
             border-radius: 24px;
-            gap: 12px;
+            gap: 10px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.5);
         }
         
         .cell {
             background: #334155;
-            font-size: 110px;
+            font-size: 92px;        /* 調整字體大小 */
             font-weight: bold;
             display: flex;
             align-items: center;
@@ -52,10 +52,9 @@
             cursor: pointer;
             transition: all 0.2s;
             color: white;
-            aspect-ratio: 1 / 1;
         }
         
-        .cell:hover { background: #475569; transform: scale(1.04); }
+        .cell:hover { background: #475569; transform: scale(1.05); }
         .cell.x { color: #fbbf24; }
         .cell.o { color: #67e8f9; }
         
@@ -123,14 +122,8 @@
         
         function handleClick(index) {
             if (boardState[index] || !gameActive || currentPlayer !== 'X') return;
-            
             makeMove(index, 'X');
-            
-            if (gameActive) {
-                setTimeout(() => {
-                    if (currentPlayer === 'O') computerMove();
-                }, 450);
-            }
+            if (gameActive) setTimeout(computerMove, 450);
         }
         
         function makeMove(index, player) {
@@ -139,8 +132,7 @@
             cells[index].textContent = player;
             cells[index].classList.add(player.toLowerCase());
             
-            const win = checkWin(player);
-            if (win) {
+            if (checkWin(player)) {
                 handleWin(player);
                 return;
             }
@@ -155,9 +147,7 @@
         }
         
         function checkWin(player) {
-            return winningConditions.some(condition => 
-                condition.every(i => boardState[i] === player)
-            );
+            return winningConditions.some(cond => cond.every(i => boardState[i] === player));
         }
         
         function handleWin(player) {
@@ -171,10 +161,7 @@
                 document.getElementById('computer-score').textContent = computerScore;
                 statusEl.textContent = '🤖 電腦獲勝';
             }
-            
-            if (playerScore < 3 && computerScore < 3) {
-                setTimeout(resetGame, 1600);
-            }
+            if (playerScore < 3 && computerScore < 3) setTimeout(resetGame, 1600);
         }
         
         function handleDraw() {
@@ -184,40 +171,22 @@
         }
         
         function computerMove() {
-            if (!gameActive) return;
+            if (!gameActive || currentPlayer !== 'O') return;
             
-            // 簡單 AI
-            for (let i = 0; i < 9; i++) {
-                if (!boardState[i]) {
-                    boardState[i] = 'O';
-                    if (checkWin('O')) {
-                        boardState[i] = null;
-                        makeMove(i, 'O');
-                        return;
-                    }
-                    boardState[i] = null;
-                }
+            // AI 邏輯
+            for (let i = 0; i < 9; i++) if (!boardState[i]) {
+                boardState[i] = 'O';
+                if (checkWin('O')) { boardState[i] = null; makeMove(i, 'O'); return; }
+                boardState[i] = null;
+            }
+            for (let i = 0; i < 9; i++) if (!boardState[i]) {
+                boardState[i] = 'X';
+                if (checkWin('X')) { boardState[i] = null; makeMove(i, 'O'); return; }
+                boardState[i] = null;
             }
             
-            for (let i = 0; i < 9; i++) {
-                if (!boardState[i]) {
-                    boardState[i] = 'X';
-                    if (checkWin('X')) {
-                        boardState[i] = null;
-                        makeMove(i, 'O');
-                        return;
-                    }
-                    boardState[i] = null;
-                }
-            }
-            
-            // 隨機
-            const empty = [];
-            boardState.forEach((val, i) => { if (!val) empty.push(i); });
-            if (empty.length > 0) {
-                const randomIndex = empty[Math.floor(Math.random() * empty.length)];
-                makeMove(randomIndex, 'O');
-            }
+            const empty = boardState.map((v,i) => v ? null : i).filter(v => v !== null);
+            if (empty.length) makeMove(empty[Math.floor(Math.random() * empty.length)], 'O');
         }
         
         function resetGame() {
@@ -234,10 +203,7 @@
             resetGame();
         }
         
-        // 啟動遊戲
-        window.onload = () => {
-            createBoard();
-        };
+        window.onload = createBoard;
     </script>
 </body>
 </html>
