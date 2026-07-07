@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>井字過三關</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background: linear-gradient(135deg, #1e3a8a, #312e81);
+            color: white;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 42px;
+            margin-bottom: 10px;
+            text-shadow: 0 4px 10px rgba(0,0,0,0.4);
+        }
+        
+        .subtitle {
+            font-size: 18px;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+        
+        .score-board {
+            display: flex;
+            justify-content: center;
+            gap: 60px;
+            margin: 20px 0;
+            font-size: 22px;
+        }
+        
+        .player {
+            padding: 10px 25px;
+            border-radius: 50px;
+            background: rgba(255,255,255,0.15);
+        }
+        
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            width: 420px;
+            height: 420px;
+            margin: 30px auto;
+            background: #1e2937;
+            padding: 15px;
+            border-radius: 20px;
+            gap: 12px;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.5);
+        }
+        
+        .cell {
+            background: #334155;
+            font-size: 110px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: white;
+            user-select: none;
+        }
+        
+        .cell:hover {
+            background: #475569;
+        }
+        
+        .cell.x { color: #f59e0b; }
+        .cell.o { color: #22d3ee; }
+        
+        .status {
+            font-size: 26px;
+            margin: 15px 0;
+            min-height: 40px;
+        }
+        
+        button {
+            padding: 14px 32px;
+            font-size: 18px;
+            background: #f59e0b;
+            color: black;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 10px;
+        }
+        
+        .win-line {
+            position: absolute;
+            height: 12px;
+            background: #22c55e;
+            border-radius: 6px;
+            box-shadow: 0 0 15px #22c55e;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>井字過三關</h1>
+    <p class="subtitle">先贏 3 局即獲得勝利！</p>
+    
+    <div class="score-board">
+        <div class="player">
+            你 (X) <span id="player-score">0</span>
+        </div>
+        <div class="player">
+            電腦 (O) <span id="computer-score">0</span>
+        </div>
+    </div>
+    
+    <div style="position: relative;">
+        <div id="board" class="board"></div>
+    </div>
+    
+    <div class="status" id="status">你的回合 (X)</div>
+    
+    <div>
+        <button onclick="resetGame()">重新一局</button>
+        <button onclick="resetMatch()">重置比賽</button>
+    </div>
+
+    <script>
+        let board = Array(9).fill(null);
+        let currentPlayer = 'X';
+        let gameActive = true;
+        let playerScore = 0;
+        let computerScore = 0;
+        let cells = [];
+        
+        const winningConditions = [
+            [0,1,2], [3,4,5], [6,7,8], // 橫
+            [0,3,6], [1,4,7], [2,5,8], // 直
+            [0,4,8], [2,4,6]           // 斜
+        ];
+        
+        const boardElement = document.getElementById('board');
+        const statusElement = document.getElementById('status');
+        
+        // 創建棋盤
+        function createBoard() {
+            boardElement.innerHTML = '';
+            cells = [];
+            board = Array(9).fill(null);
+            
+            for (let i = 0; i < 9; i++) {
+                const cell = document.createElement('div');
+                cell.classList.add('cell');
+                cell.dataset.index = i;
+                cell.addEventListener('click', handleCellClick);
+                boardElement.appendChild(cell);
+                cells.push(cell);
+            }
+        }
+        
+        function handleCellClick(e) {
+            const index = parseInt(e.target.dataset.index);
+            
+            if (board[index] || !gameActive || currentPlayer !== 'X') return;
+            
+            makeMove(index, 'X');
+            
+            if (gameActive) {
+                setTimeout(computerMove, 500);
+            }
+        }
+        
+        function makeMove(index, player) {
+            board[index] = player;
+            cells[index].textContent = player;
+            cells[index].classList.add(player.toLowerCase());
+            
+            const winResult = checkWin(player);
+            if (winResult) {
+                handleWin(player, winResult);
+                return;
+            }
+            
+            if (board.every(cell => cell !== null)) {
+                handleDraw();
+                return;
+            }
+            
+            currentPlayer = player === 'X' ? 'O' : 'X';
+            statusElement.textContent = currentPlayer === 'X' ? '你的回合 (X)' : '電腦思考中...';
+        }
+        
+        function computerMove() {
+            if (!gameActive || currentPlayer !== 'O') return;
+            
+            // 簡單 AI：先檢查能否獲勝，再阻擋玩家，最後隨機
+            let move = findBestMove();
+            if (move !== null) {
+                makeMove(move, 'O');
+            }
+        }
+        
+        function findBestMove() {
+            // 檢查電腦能否獲勝
+            for (let i = 0; i < 9; i++) {
+                if (!board[i]) {
+                    board[i] = 'O';
+                    if (checkWin('O')) {
+                        board[i] = null;
+                        return i;
+                    }
+                    board[i] = null;
+                }
+            }
+            
+            // 阻擋玩家獲勝
+            for (let i = 0; i < 9; i++) {
+                if (!board[i]) {
+                    board[i] = 'X';
+                    if (checkWin('X')) {
+                        board[i] = null;
+                        return i;
+                    }
+                    board[i] = null;
+                }
+            }
+            
+            // 隨機選擇空位
+            let emptyCells = board.map((val, idx) => val === null ? idx : null).filter(v => v !== null);
+            return emptyCells.length > 0 ? emptyCells[Math.floor(Math.random() * emptyCells.length)] : null;
+        }
+        
+        function checkWin(player) {
+            for (let condition of winningConditions) {
+                if (condition.every(index => board[index] === player)) {
+                    return condition;
+                }
+            }
+            return null;
+        }
+        
+        function handleWin(player, winningLine) {
+            gameActive = false;
+            
+            if (player === 'X') {
+                playerScore++;
+                document.getElementById('player-score').textContent = playerScore;
+                statusElement.innerHTML = `<span style="color:#f59e0b">🎉 你贏了這局！</span>`;
+            } else {
+                computerScore++;
+                document.getElementById('computer-score').textContent = computerScore;
+                statusElement.innerHTML = `<span style="color:#67e8f9">🤖 電腦獲勝</span>`;
+            }
+            
+            checkMatchWinner();
+        }
+        
+        function handleDraw() {
+            gameActive = false;
+            statusElement.textContent = "平局！";
+        }
+        
+        function checkMatchWinner() {
+            if (playerScore >= 3) {
+                statusElement.innerHTML = `<span style="color:#22c55e; font-size:32px">🏆 你贏得比賽！</span>`;
+            } else if (computerScore >= 3) {
+                statusElement.innerHTML = `<span style="color:#f87171; font-size:32px">😢 電腦獲得勝利</span>`;
+            } else {
+                setTimeout(nextRound, 1800);
+            }
+        }
+        
+        function nextRound() {
+            createBoard();
+            gameActive = true;
+            currentPlayer = 'X';
+            statusElement.textContent = '你的回合 (X)';
+        }
+        
+        function resetGame() {
+            createBoard();
+            gameActive = true;
+            currentPlayer = 'X';
+            statusElement.textContent = '你的回合 (X)';
+        }
+        
+        function resetMatch() {
+            playerScore = 0;
+            computerScore = 0;
+            document.getElementById('player-score').textContent = '0';
+            document.getElementById('computer-score').textContent = '0';
+            resetGame();
+        }
+        
+        // 開始遊戲
+        window.onload = () => {
+            createBoard();
+        };
+    </script>
+</body>
+</html>
