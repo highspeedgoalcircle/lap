@@ -16,17 +16,8 @@
             text-align: center;
         }
         
-        h1 {
-            font-size: 42px;
-            margin-bottom: 8px;
-            text-shadow: 0 4px 10px rgba(0,0,0,0.4);
-        }
-        
-        .subtitle {
-            font-size: 18px;
-            margin-bottom: 25px;
-            opacity: 0.9;
-        }
+        h1 { font-size: 42px; margin-bottom: 8px; }
+        .subtitle { font-size: 18px; margin-bottom: 25px; opacity: 0.9; }
         
         .score-board {
             display: flex;
@@ -35,12 +26,7 @@
             margin: 20px 0;
             font-size: 22px;
         }
-        
-        .player {
-            padding: 10px 30px;
-            border-radius: 50px;
-            background: rgba(255,255,255,0.15);
-        }
+        .player { padding: 10px 30px; border-radius: 50px; background: rgba(255,255,255,0.15); }
         
         .board {
             display: grid;
@@ -67,22 +53,13 @@
             transition: all 0.2s;
             color: white;
             aspect-ratio: 1 / 1;
-            user-select: none;
         }
         
-        .cell:hover {
-            background: #475569;
-            transform: scale(1.03);
-        }
-        
+        .cell:hover { background: #475569; transform: scale(1.04); }
         .cell.x { color: #fbbf24; }
         .cell.o { color: #67e8f9; }
         
-        .status {
-            font-size: 26px;
-            margin: 20px 0;
-            min-height: 40px;
-        }
+        .status { font-size: 26px; margin: 20px 0; min-height: 40px; }
         
         button {
             padding: 14px 32px;
@@ -116,12 +93,11 @@
     </div>
 
     <script>
-        let board = Array(9).fill(null);
+        let boardState = Array(9).fill(null);
         let currentPlayer = 'X';
         let gameActive = true;
         let playerScore = 0;
         let computerScore = 0;
-        let cells = [];
         
         const winningConditions = [
             [0,1,2],[3,4,5],[6,7,8],
@@ -129,80 +105,59 @@
             [0,4,8],[2,4,6]
         ];
         
-        const boardElement = document.getElementById('board');
-        const statusElement = document.getElementById('status');
+        const boardEl = document.getElementById('board');
+        const statusEl = document.getElementById('status');
         
         function createBoard() {
-            boardElement.innerHTML = '';
-            cells = [];
-            board = Array(9).fill(null);
+            boardEl.innerHTML = '';
+            boardState = Array(9).fill(null);
             
             for (let i = 0; i < 9; i++) {
                 const cell = document.createElement('div');
-                cell.classList.add('cell');
+                cell.className = 'cell';
                 cell.dataset.index = i;
-                cell.addEventListener('click', handleCellClick);
-                boardElement.appendChild(cell);
-                cells.push(cell);
+                cell.addEventListener('click', () => handleClick(i));
+                boardEl.appendChild(cell);
             }
         }
         
-        function handleCellClick(e) {
-            const index = parseInt(e.target.dataset.index);
-            if (board[index] || !gameActive || currentPlayer !== 'X') return;
+        function handleClick(index) {
+            if (boardState[index] || !gameActive || currentPlayer !== 'X') return;
             
             makeMove(index, 'X');
-            if (gameActive) setTimeout(computerMove, 400);
+            
+            if (gameActive) {
+                setTimeout(() => {
+                    if (currentPlayer === 'O') computerMove();
+                }, 450);
+            }
         }
         
         function makeMove(index, player) {
-            board[index] = player;
+            boardState[index] = player;
+            const cells = boardEl.children;
             cells[index].textContent = player;
             cells[index].classList.add(player.toLowerCase());
             
-            const winResult = checkWin(player);
-            if (winResult) {
+            const win = checkWin(player);
+            if (win) {
                 handleWin(player);
                 return;
             }
             
-            if (!board.includes(null)) {
+            if (!boardState.includes(null)) {
                 handleDraw();
                 return;
             }
             
             currentPlayer = player === 'X' ? 'O' : 'X';
-            statusElement.textContent = currentPlayer === 'X' ? '你的回合 (X)' : '電腦思考中...';
-        }
-        
-        function computerMove() {
-            if (!gameActive || currentPlayer !== 'O') return;
-            
-            let move = findBestMove();
-            if (move !== null) makeMove(move, 'O');
-        }
-        
-        function findBestMove() {
-            for (let i = 0; i < 9; i++) {
-                if (!board[i]) {
-                    board[i] = 'O';
-                    if (checkWin('O')) { board[i] = null; return i; }
-                    board[i] = null;
-                }
-            }
-            for (let i = 0; i < 9; i++) {
-                if (!board[i]) {
-                    board[i] = 'X';
-                    if (checkWin('X')) { board[i] = null; return i; }
-                    board[i] = null;
-                }
-            }
-            let empty = board.map((v,i) => v===null ? i : null).filter(v=>v!==null);
-            return empty[Math.floor(Math.random()*empty.length)];
+            statusEl.textContent = currentPlayer === 'X' ? '你的回合 (X)' : '電腦思考中...';
         }
         
         function checkWin(player) {
-            return winningConditions.find(cond => cond.every(i => board[i] === player));
+            return winningConditions.some(condition => 
+                condition.every(i => boardState[i] === player)
+            );
         }
         
         function handleWin(player) {
@@ -210,12 +165,13 @@
             if (player === 'X') {
                 playerScore++;
                 document.getElementById('player-score').textContent = playerScore;
-                statusElement.innerHTML = '🎉 你贏了這局！';
+                statusEl.textContent = '🎉 你贏了這局！';
             } else {
                 computerScore++;
                 document.getElementById('computer-score').textContent = computerScore;
-                statusElement.innerHTML = '🤖 電腦獲勝';
+                statusEl.textContent = '🤖 電腦獲勝';
             }
+            
             if (playerScore < 3 && computerScore < 3) {
                 setTimeout(resetGame, 1600);
             }
@@ -223,6 +179,65 @@
         
         function handleDraw() {
             gameActive = false;
-            statusElement.textContent = "平局！";
+            statusEl.textContent = "平局！";
             setTimeout(resetGame, 1400);
         }
+        
+        function computerMove() {
+            if (!gameActive) return;
+            
+            // 簡單 AI
+            for (let i = 0; i < 9; i++) {
+                if (!boardState[i]) {
+                    boardState[i] = 'O';
+                    if (checkWin('O')) {
+                        boardState[i] = null;
+                        makeMove(i, 'O');
+                        return;
+                    }
+                    boardState[i] = null;
+                }
+            }
+            
+            for (let i = 0; i < 9; i++) {
+                if (!boardState[i]) {
+                    boardState[i] = 'X';
+                    if (checkWin('X')) {
+                        boardState[i] = null;
+                        makeMove(i, 'O');
+                        return;
+                    }
+                    boardState[i] = null;
+                }
+            }
+            
+            // 隨機
+            const empty = [];
+            boardState.forEach((val, i) => { if (!val) empty.push(i); });
+            if (empty.length > 0) {
+                const randomIndex = empty[Math.floor(Math.random() * empty.length)];
+                makeMove(randomIndex, 'O');
+            }
+        }
+        
+        function resetGame() {
+            createBoard();
+            gameActive = true;
+            currentPlayer = 'X';
+            statusEl.textContent = '你的回合 (X)';
+        }
+        
+        function resetMatch() {
+            playerScore = computerScore = 0;
+            document.getElementById('player-score').textContent = '0';
+            document.getElementById('computer-score').textContent = '0';
+            resetGame();
+        }
+        
+        // 啟動遊戲
+        window.onload = () => {
+            createBoard();
+        };
+    </script>
+</body>
+</html>
