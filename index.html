@@ -50,33 +50,42 @@
             margin: 8px;
         }
         
-        /* 井字遊戲樣式 */
+        /* 井字遊戲樣式 - 修正重點 */
         .board {
-            width: 360px; height: 360px;
+            width: 390px;
+            height: 390px;
             margin: 20px auto;
             background: #1e2937;
             padding: 15px;
-            border-radius: 20px;
+            border-radius: 24px;
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
+            gap: 12px;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.4);
         }
         .cell {
             background: #334155;
-            font-size: 90px;
+            font-size: 88px;
             font-weight: bold;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 12px;
+            border-radius: 16px;
             cursor: pointer;
+            transition: all 0.2s;
+            color: white;
+            aspect-ratio: 1 / 1;
         }
-        .cell:hover { background: #475569; }
+        .cell:hover { background: #475569; transform: scale(1.05); }
         .cell.x { color: #fbbf24; }
         .cell.o { color: #67e8f9; }
         
         /* 貪食蛇 */
-        canvas { border: 4px solid #22d3ee; border-radius: 12px; background: #1e2937; }
+        canvas { 
+            border: 4px solid #22d3ee; 
+            border-radius: 12px; 
+            background: #1e2937; 
+        }
     </style>
 </head>
 <body>
@@ -127,18 +136,18 @@
     </div>
 
     <script>
-        let currentGame = '';
+        // ==================== 變數 ====================
         let ticBoardState = Array(9).fill(null);
         let ticCurrentPlayer = 'X';
         let ticGameActive = true;
         let ticXScore = 0, ticOScore = 0;
         let ticMode = 'pve';
+        let snakeInterval;
         
         // ==================== 主選單 ====================
         function startGame(game) {
             document.getElementById('menu').style.display = 'none';
             document.getElementById('game-area').style.display = 'block';
-            currentGame = game;
             
             document.getElementById('tictactoe-container').style.display = game === 'tictactoe' ? 'block' : 'none';
             document.getElementById('snake-container').style.display = game === 'snake' ? 'block' : 'none';
@@ -150,6 +159,7 @@
         function backToMenu() {
             document.getElementById('menu').style.display = 'block';
             document.getElementById('game-area').style.display = 'none';
+            if (snakeInterval) clearInterval(snakeInterval);
         }
         
         // ==================== 井字過三關 ====================
@@ -180,7 +190,7 @@
         
         function makeTicMove(index, player) {
             ticBoardState[index] = player;
-            const cell = document.querySelector(`.cell[data-index="${index}"]`);
+            const cell = document.querySelector(`#tic-board .cell[data-index="${index}"]`);
             cell.textContent = player;
             cell.classList.add(player.toLowerCase());
             
@@ -219,7 +229,6 @@
         
         function computerTicMove() {
             if (!ticGameActive || ticCurrentPlayer !== 'O') return;
-            // 簡單 AI
             for (let i = 0; i < 9; i++) {
                 if (!ticBoardState[i]) {
                     ticBoardState[i] = 'O';
@@ -247,7 +256,6 @@
         }
         
         // ==================== 貪食蛇 ====================
-        let snakeInterval;
         function initSnake() {
             const canvas = document.getElementById('snake-canvas');
             const ctx = canvas.getContext('2d');
@@ -291,7 +299,6 @@
             initSnake();
         }
         
-        // 初始
         window.onload = () => {};
     </script>
 </body>
