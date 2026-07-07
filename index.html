@@ -17,7 +17,29 @@
         }
         
         h1 { font-size: 42px; margin-bottom: 8px; }
-        .subtitle { font-size: 18px; margin-bottom: 25px; opacity: 0.9; }
+        .subtitle { font-size: 18px; margin-bottom: 20px; opacity: 0.9; }
+        
+        .mode-select {
+            margin: 20px 0;
+        }
+        
+        .mode-btn {
+            padding: 12px 28px;
+            font-size: 18px;
+            margin: 0 10px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .mode-btn.active {
+            background: #f59e0b;
+            color: black;
+        }
+        .mode-btn:not(.active) {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
         
         .score-board {
             display: flex;
@@ -57,11 +79,7 @@
             flex-shrink: 0;
         }
         
-        .cell:hover { 
-            background: #475569; 
-            transform: scale(1.08); 
-        }
-        
+        .cell:hover { background: #475569; transform: scale(1.08); }
         .cell.x { color: #fbbf24; }
         .cell.o { color: #67e8f9; }
         
@@ -84,9 +102,14 @@
     <h1>井字過三關</h1>
     <p class="subtitle">先贏 3 局即獲得勝利！</p>
     
+    <div class="mode-select">
+        <button class="mode-btn active" id="pve-btn" onclick="setMode('pve')">對戰電腦</button>
+        <button class="mode-btn" id="pvp-btn" onclick="setMode('pvp')">雙人對戰</button>
+    </div>
+    
     <div class="score-board">
-        <div class="player">你 (X) <span id="player-score">0</span></div>
-        <div class="player">電腦 (O) <span id="computer-score">0</span></div>
+        <div class="player">玩家 X <span id="player-score">0</span></div>
+        <div class="player">玩家 O <span id="computer-score">0</span></div>
     </div>
     
     <div class="board" id="board"></div>
@@ -104,6 +127,7 @@
         let gameActive = true;
         let playerScore = 0;
         let computerScore = 0;
+        let gameMode = 'pve'; // 'pve' 或 'pvp'
         
         const winningConditions = [
             [0,1,2],[3,4,5],[6,7,8],
@@ -113,6 +137,13 @@
         
         const boardEl = document.getElementById('board');
         const statusEl = document.getElementById('status');
+        
+        function setMode(mode) {
+            gameMode = mode;
+            document.getElementById('pve-btn').classList.toggle('active', mode === 'pve');
+            document.getElementById('pvp-btn').classList.toggle('active', mode === 'pvp');
+            resetGame();
+        }
         
         function createBoard() {
             boardEl.innerHTML = '';
@@ -128,9 +159,13 @@
         }
         
         function handleClick(index) {
-            if (boardState[index] || !gameActive || currentPlayer !== 'X') return;
-            makeMove(index, 'X');
-            if (gameActive) setTimeout(computerMove, 450);
+            if (boardState[index] || !gameActive) return;
+            
+            makeMove(index, currentPlayer);
+            
+            if (gameActive && gameMode === 'pve' && currentPlayer === 'O') {
+                setTimeout(computerMove, 450);
+            }
         }
         
         function makeMove(index, player) {
@@ -150,7 +185,7 @@
             }
             
             currentPlayer = player === 'X' ? 'O' : 'X';
-            statusEl.textContent = currentPlayer === 'X' ? '你的回合 (X)' : '電腦思考中...';
+            statusEl.textContent = `${currentPlayer === 'X' ? 'X' : 'O'} 的回合`;
         }
         
         function checkWin(player) {
@@ -159,16 +194,17 @@
         
         function handleWin(player) {
             gameActive = false;
-            if (player === 'X') {
-                playerScore++;
-                document.getElementById('player-score').textContent = playerScore;
-                statusEl.textContent = '🎉 你贏了這局！';
-            } else {
-                computerScore++;
-                document.getElementById('computer-score').textContent = computerScore;
-                statusEl.textContent = '🤖 電腦獲勝';
+            if (player === 'X') playerScore++;
+            else computerScore++;
+            
+            document.getElementById('player-score').textContent = playerScore;
+            document.getElementById('computer-score').textContent = computerScore;
+            
+            statusEl.textContent = player === 'X' ? '🎉 X 獲勝！' : '🎉 O 獲勝！';
+            
+            if (playerScore < 3 && computerScore < 3) {
+                setTimeout(resetGame, 1600);
             }
-            if (playerScore < 3 && computerScore < 3) setTimeout(resetGame, 1600);
         }
         
         function handleDraw() {
@@ -180,6 +216,7 @@
         function computerMove() {
             if (!gameActive || currentPlayer !== 'O') return;
             
+            // 簡單 AI
             for (let i = 0; i < 9; i++) {
                 if (!boardState[i]) {
                     boardState[i] = 'O';
@@ -203,7 +240,7 @@
             createBoard();
             gameActive = true;
             currentPlayer = 'X';
-            statusEl.textContent = '你的回合 (X)';
+            statusEl.textContent = 'X 的回合';
         }
         
         function resetMatch() {
@@ -213,7 +250,9 @@
             resetGame();
         }
         
-        window.onload = createBoard;
+        window.onload = () => {
+            createBoard();
+        };
     </script>
 </body>
 </html>
