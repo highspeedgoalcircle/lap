@@ -94,7 +94,7 @@
         .c4-board {
             width: 460px;
             margin: 20px auto;
-            background: #2563eb; /* 經典藍色棋架 */
+            background: #2563eb; 
             padding: 15px;
             border-radius: 20px;
             display: grid;
@@ -103,9 +103,9 @@
             box-shadow: 0 15px 35px rgba(0,0,0,0.5);
         }
         .c4-cell {
-            background: #1e2937; /* 空落子孔（黑色深邃感） */
+            background: #1e2937; 
             aspect-ratio: 1 / 1;
-            border-radius: 50%; /* 圓形孔 */
+            border-radius: 50%; 
             cursor: pointer;
             transition: background-color 0.2s, transform 0.1s;
             position: relative;
@@ -113,7 +113,6 @@
         .c4-cell:hover {
             transform: scale(1.05);
         }
-        /* 紅綠色棋子樣式 */
         .c4-cell.red {
             background: #ef4444; 
             box-shadow: inset 0 0 10px rgba(0,0,0,0.5), 0 0 10px rgba(239, 68, 68, 0.5);
@@ -141,9 +140,11 @@
         </div>
     </div>
 
+    <!-- 遊戲區域 -->
     <div id="game-area">
         <button onclick="backToMenu()" style="margin:15px; background: #64748b; color: white;">← 返回選單</button>
         
+        <!-- 井字過三關 -->
         <div id="tictactoe-container">
             <h2>井字過三關</h2>
             <div style="margin:15px 0">
@@ -160,6 +161,7 @@
             <button onclick="resetTicMatch()">重置比賽</button>
         </div>
         
+        <!-- 四子棋區域 -->
         <div id="connect4-container" style="display:none">
             <h2>🔴 四子棋 🟢</h2>
             <div style="margin:15px 0">
@@ -183,18 +185,18 @@
         // ==================== 全域變數 ====================
         let currentGame = '';
         
-        // 井字遊戲狀態
+        // 井字狀態
         let ticBoardState = Array(9).fill(null);
         let ticCurrentPlayer = 'X';
         let ticGameActive = true;
         let ticXScore = 0, ticOScore = 0;
         let ticMode = 'pve';
         
-        // 四子棋狀態 (7行 x 6列)
+        // 四子棋狀態
         const C4_ROWS = 6;
         const C4_COLS = 7;
-        let c4BoardState = []; // 二維陣列 [row][col]
-        let c4CurrentPlayer = 'red'; // 'red' 或 'green'
+        let c4BoardState = []; 
+        let c4CurrentPlayer = 'red'; 
         let c4GameActive = true;
         let c4RedScore = 0, c4GreenScore = 0;
         let c4Mode = 'pve';
@@ -324,7 +326,6 @@
         
         // ==================== 四子棋核心邏輯 ====================
         function initConnect4() {
-            // 建立 6x7 棋盤狀態 (null 代表空孔)
             c4BoardState = [];
             for (let r = 0; r < C4_ROWS; r++) {
                 c4BoardState.push(Array(C4_COLS).fill(null));
@@ -339,15 +340,12 @@
             const board = document.getElementById('c4-board');
             board.innerHTML = '';
             
-            // 依照從上到下、從左到右的順序渲染 HTML 節點
             for (let r = 0; r < C4_ROWS; r++) {
                 for (let c = 0; c < C4_COLS; c++) {
                     const cell = document.createElement('div');
                     cell.className = 'c4-cell';
                     cell.dataset.row = r;
                     cell.dataset.col = c;
-                    
-                    // 點擊該孔位時，觸發「在該行(Column)投子」的動作
                     cell.addEventListener('click', () => c4HandleClick(c));
                     board.appendChild(cell);
                 }
@@ -356,41 +354,25 @@
         
         function c4HandleClick(col) {
             if (!c4GameActive) return;
-            // 如果是 AI 回合，鎖定玩家點擊
             if (c4Mode === 'pve' && c4CurrentPlayer === 'green') return;
             
             makeC4Move(col);
         }
         
         function makeC4Move(col) {
-            // 四子棋重力機制：從最底部（row 5）往上找第一個空位
-            let targetRow = -1;
-            for (let r = C4_ROWS - 1; r >= 0; r--) {
-                if (c4BoardState[r][col] === null) {
-                    targetRow = r;
-                    break;
-                }
-            }
+            let targetRow = getLowestEmptyRow(c4BoardState, col);
+            if (targetRow === -1) return; // 該行已滿
             
-            // 該行滿了，無法落子
-            if (targetRow === -1) return;
-            
-            // 模擬落子
             c4BoardState[targetRow][col] = c4CurrentPlayer;
             
-            // 更新 UI 樣式
             const cell = document.querySelector(`.c4-cell[data-row="${targetRow}"][data-col="${col}"]`);
-            if (cell) {
-                cell.classList.add(c4CurrentPlayer);
-            }
+            if (cell) cell.classList.add(c4CurrentPlayer);
             
-            // 檢查勝負
-            if (checkC4Win(targetRow, col, c4CurrentPlayer)) {
+            if (checkC4Win(c4BoardState, targetRow, col, c4CurrentPlayer)) {
                 handleC4Win(c4CurrentPlayer);
                 return;
             }
             
-            // 檢查是否平局 (全部填滿)
             if (c4BoardState.every(row => row.every(cell => cell !== null))) {
                 document.getElementById('c4-status').textContent = "平局！";
                 document.getElementById('c4-status').style.color = "white";
@@ -398,41 +380,39 @@
                 return;
             }
             
-            // 切換玩家
             c4CurrentPlayer = c4CurrentPlayer === 'red' ? 'green' : 'red';
             updateC4StatusUI();
             
-            // 如果是 AI 模式且輪到綠色
             if (c4Mode === 'pve' && c4CurrentPlayer === 'green') {
-                setTimeout(computerC4Move, 600);
+                setTimeout(computerC4Move, 500);
             }
         }
         
-        // 精準檢查四個方向是否連線成功
-        function checkC4Win(r, c, player) {
+        function getLowestEmptyRow(board, col) {
+            for (let r = C4_ROWS - 1; r >= 0; r--) {
+                if (board[r][col] === null) return r;
+            }
+            return -1;
+        }
+        
+        function checkC4Win(board, r, c, player) {
             const directions = [
                 {dr: 0, dc: 1},  // 水平
                 {dr: 1, dc: 0},  // 垂直
-                {dr: 1, dc: 1},  // 正對角線 (\)
-                {dr: 1, dc: -1}  // 反對角線 (/)
+                {dr: 1, dc: 1},  // 正對角線
+                {dr: 1, dc: -1}  // 反對角線
             ];
             
             for (let {dr, dc} of directions) {
                 let count = 1;
-                
-                // 正方向探查
                 let i = 1;
-                while (r + dr*i >= 0 && r + dr*i < C4_ROWS && c + dc*i >= 0 && c + dc*i < C4_COLS && c4BoardState[r + dr*i][c + dc*i] === player) {
-                    count++;
-                    i++;
+                while (r + dr*i >= 0 && r + dr*i < C4_ROWS && c + dc*i >= 0 && c + dc*i < C4_COLS && board[r + dr*i][c + dc*i] === player) {
+                    count++; i++;
                 }
-                // 反方向探查
                 i = 1;
-                while (r - dr*i >= 0 && r - dr*i < C4_ROWS && c - dc*i >= 0 && c - dc*i < C4_COLS && c4BoardState[r - dr*i][c - dc*i] === player) {
-                    count++;
-                    i++;
+                while (r - dr*i >= 0 && r - dr*i < C4_ROWS && c - dc*i >= 0 && c - dc*i < C4_COLS && board[r - dr*i][c - dc*i] === player) {
+                    count++; i++;
                 }
-                
                 if (count >= 4) return true;
             }
             return false;
@@ -441,7 +421,6 @@
         function handleC4Win(player) {
             c4GameActive = false;
             const statusTxt = document.getElementById('c4-status');
-            
             if (player === 'red') {
                 c4RedScore++;
                 statusTxt.textContent = '🎉 🔴 紅色獲得勝利！';
@@ -451,48 +430,146 @@
                 statusTxt.textContent = '🎉 🟢 綠色獲得勝利！';
                 statusTxt.style.color = '#22c55e';
             }
-            
             document.getElementById('red-score').textContent = c4RedScore;
             document.getElementById('green-score').textContent = c4GreenScore;
         }
         
-        // 四子棋 AI 機制 (進攻與防守預測)
+        // ==================== 🧠 升級版 AI 核心算法 ====================
         function computerC4Move() {
             if (!c4GameActive || c4CurrentPlayer !== 'green') return;
             
-            // 輔助函數：模擬測試某個 Column 能否達成贏局
-            function findWinningColumn(player) {
-                for (let c = 0; c < C4_COLS; c++) {
-                    let r = -1;
-                    for (let row = C4_ROWS - 1; row >= 0; row--) {
-                        if (c4BoardState[row][c] === null) { r = row; break; }
+            let bestScore = -Infinity;
+            let bestCols = [3]; // 預設拿中線
+            
+            // 遍歷所有可以下的行，給每一行打分
+            for (let c = 0; c < C4_COLS; c++) {
+                let r = getLowestEmptyRow(c4BoardState, c);
+                if (r === -1) continue; // 這行滿了，跳過
+                
+                // 1. 【絕殺判定】如果電腦下這步能直接贏，就以最高優先度去下
+                c4BoardState[r][c] = 'green';
+                if (checkC4Win(c4BoardState, r, c, 'green')) {
+                    c4BoardState[r][c] = null;
+                    makeC4Move(c);
+                    return;
+                }
+                c4BoardState[r][c] = null;
+            }
+
+            for (let c = 0; c < C4_COLS; c++) {
+                let r = getLowestEmptyRow(c4BoardState, c);
+                if (r === -1) continue;
+                
+                // 2. 【緊急防守】如果玩家下這步會直接贏，立刻去堵
+                c4BoardState[r][c] = 'red';
+                if (checkC4Win(c4BoardState, r, c, 'red')) {
+                    c4BoardState[r][c] = null;
+                    makeC4Move(c);
+                    return;
+                }
+                c4BoardState[r][c] = null;
+            }
+
+            // 3. 【戰略評分機制】如果沒有一刀斃命的機會，就動態評估最佳落子點
+            for (let c = 0; c < C4_COLS; c++) {
+                let r = getLowestEmptyRow(c4BoardState, c);
+                if (r === -1) continue;
+                
+                // 虛擬落子
+                c4BoardState[r][c] = 'green';
+                
+                // --- 【核心防呆修正】：檢查下這一子，會不會剛好變成玩家下一子的「踏腳石」導致玩家連成4個？
+                let opponentNextRow = getLowestEmptyRow(c4BoardState, c);
+                if (opponentNextRow !== -1) {
+                    c4BoardState[opponentNextRow][c] = 'red';
+                    if (checkC4Win(c4BoardState, opponentNextRow, c, 'red')) {
+                        // 如果會送分給玩家，這個位置給予極端懲罰扣分
+                        c4BoardState[opponentNextRow][c] = null;
+                        c4BoardState[r][c] = null;
+                        continue; 
                     }
-                    if (r !== -1) {
-                        c4BoardState[r][c] = player;
-                        let isWin = checkC4Win(r, c, player);
-                        c4BoardState[r][c] = null; // 復原
-                        if (isWin) return c;
+                    c4BoardState[opponentNextRow][c] = null;
+                }
+                
+                // 開始評估該位置的分數
+                let score = evaluatePositionScore(r, c);
+                
+                // 還原棋盤
+                c4BoardState[r][c] = null;
+                
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestCols = [c];
+                } else if (score === bestScore) {
+                    bestCols.push(c);
+                }
+            }
+            
+            // 從得分最高的幾行中，隨機挑一個走（增加局勢隨機性，防止套路）
+            const finalCol = bestCols[Math.floor(Math.random() * bestCols.length)];
+            makeC4Move(finalCol);
+        }
+        
+        // 評估特定位置的局勢分數
+        function evaluatePositionScore(r, c) {
+            let totalScore = 0;
+            
+            // 權重1：中線控制（第3列是黃金核心，給予基礎分加成）
+            if (c === 3) totalScore += 12;
+            else if (c === 2 || c === 4) totalScore += 6;
+            else if (c === 1 || c === 5) totalScore += 2;
+            
+            // 權重2：掃描潛在連線機率（活三、活二）
+            totalScore += countPotentialLines(r, c, 'green') * 3; // 提升自己潛在連線的分數
+            totalScore += countPotentialLines(r, c, 'red') * 2;   // 預防性封堵玩家潛在連線的分數
+            
+            return totalScore;
+        }
+        
+        // 輔助計分：計算落子在 (r,c) 後，在各方向能與現有棋子組合出多少個「有希望連成 4 子」的棋形
+        function countPotentialLines(r, c, player) {
+            const directions = [
+                {dr: 0, dc: 1},  // 水平
+                {dr: 1, dc: 0},  // 垂直
+                {dr: 1, dc: 1},  // 斜下
+                {dr: 1, dc: -1}  // 斜上
+            ];
+            
+            let comboScore = 0;
+            
+            for (let {dr, dc} of directions) {
+                // 檢查該方向上連續 4 個格子的區間窗口
+                for (let shift = -3; shift <= 0; shift++) {
+                    let playerCount = 0;
+                    let emptyCount = 0;
+                    let isPossible = true;
+                    
+                    for (let i = 0; i < 4; i++) {
+                        let currR = r + dr * (shift + i);
+                        let currC = c + dc * (shift + i);
+                        
+                        if (currR >= 0 && currR < C4_ROWS && currC >= 0 && currC < C4_COLS) {
+                            if (c4BoardState[currR][currC] === player) {
+                                playerCount++;
+                            } else if (c4BoardState[currR][currC] === null) {
+                                emptyCount++;
+                            } else {
+                                isPossible = false; // 被對手的棋子擋住了，不可能連成4個
+                                break;
+                            }
+                        } else {
+                            isPossible = false; // 超出邊界
+                            break;
+                        }
+                    }
+                    
+                    if (isPossible) {
+                        if (playerCount === 3) comboScore += 25; // 造成/阻止 活三
+                        else if (playerCount === 2) comboScore += 5;  // 造成/阻止 活二
                     }
                 }
-                return -1;
             }
-            
-            // 1. 進攻優先：檢查 AI (green) 能不能當下一子就贏
-            let aiWinCol = findWinningColumn('green');
-            if (aiWinCol !== -1) { makeC4Move(aiWinCol); return; }
-            
-            // 2. 防守次之：檢查 玩家 (red) 有沒有當下一子就贏的威脅，有的話立刻封堵
-            let playerWinCol = findWinningColumn('red');
-            if (playerWinCol !== -1) { makeC4Move(playerWinCol); return; }
-            
-            // 3. 隨機/智力選擇：優先選擇中間區域（第 2, 3, 4 行）以獲取策略優勢
-            const preferredCols = [3, 2, 4, 1, 5, 0, 6];
-            const validCols = preferredCols.filter(c => c4BoardState[0][c] === null);
-            
-            if (validCols.length > 0) {
-                // 有中間行可選時，較高機率選前面的優勢行
-                makeC4Move(validCols[0]);
-            }
+            return comboScore;
         }
         
         function updateC4StatusUI() {
