@@ -14,6 +14,7 @@
             margin: 0;
             padding: 0;
             text-align: center;
+            overflow-x: hidden;
         }
         .container { max-width: 900px; margin: 0 auto; padding: 20px; }
         h1 { font-size: 48px; margin: 30px 0 10px; }
@@ -42,18 +43,26 @@
         button {
             padding: 12px 30px;
             font-size: 18px;
-            background: #f59e0b;
+            background: #e2e8f0;
             color: black;
             border: none;
             border-radius: 50px;
             cursor: pointer;
             margin: 8px;
+            transition: all 0.2s;
+            font-weight: bold;
+        }
+        button:hover { background: #f59e0b; }
+        
+        .mode-btn.active {
+            background: #f59e0b;
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
         }
         
-        /* 井字遊戲樣式 - 修正重點 */
+        /* ==================== 井字過三關樣式 ==================== */
         .board {
-            width: 390px;
-            height: 390px;
+            width: 360px;
+            height: 360px;
             margin: 20px auto;
             background: #1e2937;
             padding: 15px;
@@ -65,7 +74,7 @@
         }
         .cell {
             background: #334155;
-            font-size: 88px;
+            font-size: 64px;
             font-weight: bold;
             display: flex;
             align-items: center;
@@ -75,16 +84,43 @@
             transition: all 0.2s;
             color: white;
             aspect-ratio: 1 / 1;
+            user-select: none;
         }
-        .cell:hover { background: #475569; transform: scale(1.05); }
+        .cell:hover { background: #475569; transform: scale(1.03); }
         .cell.x { color: #fbbf24; }
         .cell.o { color: #67e8f9; }
         
-        /* 貪食蛇 */
-        canvas { 
-            border: 4px solid #22d3ee; 
-            border-radius: 12px; 
-            background: #1e2937; 
+        /* ==================== 四子棋專屬樣式 ==================== */
+        .c4-board {
+            width: 460px;
+            margin: 20px auto;
+            background: #2563eb; /* 經典藍色棋架 */
+            padding: 15px;
+            border-radius: 20px;
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 10px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+        }
+        .c4-cell {
+            background: #1e2937; /* 空落子孔（黑色深邃感） */
+            aspect-ratio: 1 / 1;
+            border-radius: 50%; /* 圓形孔 */
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            position: relative;
+        }
+        .c4-cell:hover {
+            transform: scale(1.05);
+        }
+        /* 紅綠色棋子樣式 */
+        .c4-cell.red {
+            background: #ef4444; 
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5), 0 0 10px rgba(239, 68, 68, 0.5);
+        }
+        .c4-cell.green {
+            background: #22c55e;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5), 0 0 10px rgba(34, 197, 94, 0.5);
         }
     </style>
 </head>
@@ -98,18 +134,16 @@
                 <h2>井字過三關</h2>
                 <p>先贏 3 局獲得勝利！</p>
             </div>
-            <div class="game-card" onclick="startGame('snake')">
-                <h2>🐍 貪食蛇</h2>
-                <p>經典貪吃蛇，吃越多分數越高</p>
+            <div class="game-card" onclick="startGame('connect4')">
+                <h2>🔴 四子棋 🟢</h2>
+                <p>紅綠對決！將 4 個同色棋子連成一線</p>
             </div>
         </div>
     </div>
 
-    <!-- 遊戲區域 -->
     <div id="game-area">
-        <button onclick="backToMenu()" style="margin:15px;">← 返回選單</button>
+        <button onclick="backToMenu()" style="margin:15px; background: #64748b; color: white;">← 返回選單</button>
         
-        <!-- 井字過三關 -->
         <div id="tictactoe-container">
             <h2>井字過三關</h2>
             <div style="margin:15px 0">
@@ -117,52 +151,74 @@
                 <button onclick="setTicMode('pvp')" id="pvp-btn" class="mode-btn">雙人對戰</button>
             </div>
             <div style="display:flex;justify-content:center;gap:50px;margin:10px 0;font-size:20px">
-                <div>玩家 X <span id="x-score">0</span></div>
-                <div>玩家 O <span id="o-score">0</span></div>
+                <div>玩家 X: <span id="x-score">0</span></div>
+                <div>玩家 O: <span id="o-score">0</span></div>
             </div>
             <div id="tic-board" class="board"></div>
-            <div id="tic-status" style="font-size:24px;margin:15px 0">X 的回合</div>
+            <div id="tic-status" style="font-size:24px;margin:15px 0; min-height: 36px;">X 的回合</div>
             <button onclick="resetTicGame()">重新一局</button>
             <button onclick="resetTicMatch()">重置比賽</button>
         </div>
         
-        <!-- 貪食蛇 -->
-        <div id="snake-container" style="display:none">
-            <h2>🐍 貪食蛇</h2>
-            <canvas id="snake-canvas" width="400" height="400"></canvas>
-            <div style="margin:15px 0;font-size:22px">分數: <span id="snake-score">0</span></div>
-            <button onclick="startSnake()">開始新遊戲</button>
+        <div id="connect4-container" style="display:none">
+            <h2>🔴 四子棋 🟢</h2>
+            <div style="margin:15px 0">
+                <button onclick="setC4Mode('pve')" id="c4-pve-btn" class="mode-btn active">對戰電腦</button>
+                <button onclick="setC4Mode('pvp')" id="c4-pvp-btn" class="mode-btn">雙人對戰</button>
+            </div>
+            <div style="display:flex;justify-content:center;gap:50px;margin:10px 0;font-size:20px">
+                <div>紅色 (Red): <span id="red-score">0</span></div>
+                <div>綠色 (Green): <span id="green-score">0</span></div>
+            </div>
+            
+            <div id="c4-board" class="c4-board"></div>
+            
+            <div id="c4-status" style="font-size:24px;margin:15px 0; min-height: 36px; color: #ef4444; font-weight: bold;">紅色的回合</div>
+            <button onclick="resetC4Game()">重新一局</button>
+            <button onclick="resetC4Match()">重置比賽</button>
         </div>
     </div>
 
     <script>
-        // ==================== 變數 ====================
+        // ==================== 全域變數 ====================
+        let currentGame = '';
+        
+        // 井字遊戲狀態
         let ticBoardState = Array(9).fill(null);
         let ticCurrentPlayer = 'X';
         let ticGameActive = true;
         let ticXScore = 0, ticOScore = 0;
         let ticMode = 'pve';
-        let snakeInterval;
         
-        // ==================== 主選單 ====================
+        // 四子棋狀態 (7行 x 6列)
+        const C4_ROWS = 6;
+        const C4_COLS = 7;
+        let c4BoardState = []; // 二維陣列 [row][col]
+        let c4CurrentPlayer = 'red'; // 'red' 或 'green'
+        let c4GameActive = true;
+        let c4RedScore = 0, c4GreenScore = 0;
+        let c4Mode = 'pve';
+        
+        // ==================== 主選單邏輯 ====================
         function startGame(game) {
+            currentGame = game;
             document.getElementById('menu').style.display = 'none';
             document.getElementById('game-area').style.display = 'block';
             
             document.getElementById('tictactoe-container').style.display = game === 'tictactoe' ? 'block' : 'none';
-            document.getElementById('snake-container').style.display = game === 'snake' ? 'block' : 'none';
+            document.getElementById('connect4-container').style.display = game === 'connect4' ? 'block' : 'none';
             
             if (game === 'tictactoe') initTicTacToe();
-            if (game === 'snake') initSnake();
+            if (game === 'connect4') initConnect4();
         }
         
         function backToMenu() {
+            currentGame = '';
             document.getElementById('menu').style.display = 'block';
             document.getElementById('game-area').style.display = 'none';
-            if (snakeInterval) clearInterval(snakeInterval);
         }
         
-        // ==================== 井字過三關 ====================
+        // ==================== 井字過三關邏輯 ====================
         function initTicTacToe() {
             ticBoardState = Array(9).fill(null);
             ticCurrentPlayer = 'X';
@@ -185,14 +241,17 @@
         
         function ticHandleClick(index) {
             if (ticBoardState[index] || !ticGameActive) return;
+            if (ticMode === 'pve' && ticCurrentPlayer === 'O') return;
             makeTicMove(index, ticCurrentPlayer);
         }
         
         function makeTicMove(index, player) {
             ticBoardState[index] = player;
             const cell = document.querySelector(`#tic-board .cell[data-index="${index}"]`);
-            cell.textContent = player;
-            cell.classList.add(player.toLowerCase());
+            if (cell) {
+                cell.textContent = player;
+                cell.classList.add(player.toLowerCase());
+            }
             
             if (checkTicWin(player)) {
                 handleTicWin(player);
@@ -200,6 +259,7 @@
             }
             if (!ticBoardState.includes(null)) {
                 document.getElementById('tic-status').textContent = "平局！";
+                ticGameActive = false;
                 setTimeout(initTicTacToe, 1400);
                 return;
             }
@@ -228,11 +288,18 @@
         }
         
         function computerTicMove() {
-            if (!ticGameActive || ticCurrentPlayer !== 'O') return;
+            if (ticCurrentPlayer !== 'O') return;
             for (let i = 0; i < 9; i++) {
                 if (!ticBoardState[i]) {
                     ticBoardState[i] = 'O';
                     if (checkTicWin('O')) { ticBoardState[i] = null; makeTicMove(i, 'O'); return; }
+                    ticBoardState[i] = null;
+                }
+            }
+            for (let i = 0; i < 9; i++) {
+                if (!ticBoardState[i]) {
+                    ticBoardState[i] = 'X';
+                    if (checkTicWin('X')) { ticBoardState[i] = null; makeTicMove(i, 'O'); return; }
                     ticBoardState[i] = null;
                 }
             }
@@ -255,51 +322,204 @@
             initTicTacToe();
         }
         
-        // ==================== 貪食蛇 ====================
-        function initSnake() {
-            const canvas = document.getElementById('snake-canvas');
-            const ctx = canvas.getContext('2d');
-            let snake = [{x:200,y:200}], dx=20, dy=0, score=0, food={x:300,y:300};
+        // ==================== 四子棋核心邏輯 ====================
+        function initConnect4() {
+            // 建立 6x7 棋盤狀態 (null 代表空孔)
+            c4BoardState = [];
+            for (let r = 0; r < C4_ROWS; r++) {
+                c4BoardState.push(Array(C4_COLS).fill(null));
+            }
+            c4CurrentPlayer = 'red';
+            c4GameActive = true;
+            updateC4StatusUI();
+            createC4BoardUI();
+        }
+        
+        function createC4BoardUI() {
+            const board = document.getElementById('c4-board');
+            board.innerHTML = '';
             
-            function gameLoop() {
-                const head = {x: snake[0].x + dx, y: snake[0].y + dy};
-                if (head.x < 0 || head.x >= 400 || head.y < 0 || head.y >= 400 || 
-                    snake.some(s => s.x === head.x && s.y === head.y)) {
-                    clearInterval(snakeInterval);
-                    alert('遊戲結束！分數：' + score);
-                    return;
+            // 依照從上到下、從左到右的順序渲染 HTML 節點
+            for (let r = 0; r < C4_ROWS; r++) {
+                for (let c = 0; c < C4_COLS; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'c4-cell';
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+                    
+                    // 點擊該孔位時，觸發「在該行(Column)投子」的動作
+                    cell.addEventListener('click', () => c4HandleClick(c));
+                    board.appendChild(cell);
                 }
-                snake.unshift(head);
-                if (head.x === food.x && head.y === food.y) {
-                    score += 10;
-                    document.getElementById('snake-score').textContent = score;
-                    food = {x: Math.floor(Math.random()*19)*20, y: Math.floor(Math.random()*19)*20};
-                } else snake.pop();
-                
-                ctx.fillStyle = '#1e2937';
-                ctx.fillRect(0,0,400,400);
-                ctx.fillStyle = '#22d3ee';
-                snake.forEach(s => ctx.fillRect(s.x, s.y, 20, 20));
-                ctx.fillStyle = '#f59e0b';
-                ctx.fillRect(food.x, food.y, 20, 20);
+            }
+        }
+        
+        function c4HandleClick(col) {
+            if (!c4GameActive) return;
+            // 如果是 AI 回合，鎖定玩家點擊
+            if (c4Mode === 'pve' && c4CurrentPlayer === 'green') return;
+            
+            makeC4Move(col);
+        }
+        
+        function makeC4Move(col) {
+            // 四子棋重力機制：從最底部（row 5）往上找第一個空位
+            let targetRow = -1;
+            for (let r = C4_ROWS - 1; r >= 0; r--) {
+                if (c4BoardState[r][col] === null) {
+                    targetRow = r;
+                    break;
+                }
             }
             
-            document.addEventListener('keydown', e => {
-                if (e.key === 'ArrowUp' && dy !== 20) { dx=0; dy=-20; }
-                if (e.key === 'ArrowDown' && dy !== -20) { dx=0; dy=20; }
-                if (e.key === 'ArrowLeft' && dx !== 20) { dx=-20; dy=0; }
-                if (e.key === 'ArrowRight' && dx !== -20) { dx=20; dy=0; }
-            });
+            // 該行滿了，無法落子
+            if (targetRow === -1) return;
             
-            if (snakeInterval) clearInterval(snakeInterval);
-            snakeInterval = setInterval(gameLoop, 110);
+            // 模擬落子
+            c4BoardState[targetRow][col] = c4CurrentPlayer;
+            
+            // 更新 UI 樣式
+            const cell = document.querySelector(`.c4-cell[data-row="${targetRow}"][data-col="${col}"]`);
+            if (cell) {
+                cell.classList.add(c4CurrentPlayer);
+            }
+            
+            // 檢查勝負
+            if (checkC4Win(targetRow, col, c4CurrentPlayer)) {
+                handleC4Win(c4CurrentPlayer);
+                return;
+            }
+            
+            // 檢查是否平局 (全部填滿)
+            if (c4BoardState.every(row => row.every(cell => cell !== null))) {
+                document.getElementById('c4-status').textContent = "平局！";
+                document.getElementById('c4-status').style.color = "white";
+                c4GameActive = false;
+                return;
+            }
+            
+            // 切換玩家
+            c4CurrentPlayer = c4CurrentPlayer === 'red' ? 'green' : 'red';
+            updateC4StatusUI();
+            
+            // 如果是 AI 模式且輪到綠色
+            if (c4Mode === 'pve' && c4CurrentPlayer === 'green') {
+                setTimeout(computerC4Move, 600);
+            }
         }
         
-        function startSnake() {
-            initSnake();
+        // 精準檢查四個方向是否連線成功
+        function checkC4Win(r, c, player) {
+            const directions = [
+                {dr: 0, dc: 1},  // 水平
+                {dr: 1, dc: 0},  // 垂直
+                {dr: 1, dc: 1},  // 正對角線 (\)
+                {dr: 1, dc: -1}  // 反對角線 (/)
+            ];
+            
+            for (let {dr, dc} of directions) {
+                let count = 1;
+                
+                // 正方向探查
+                let i = 1;
+                while (r + dr*i >= 0 && r + dr*i < C4_ROWS && c + dc*i >= 0 && c + dc*i < C4_COLS && c4BoardState[r + dr*i][c + dc*i] === player) {
+                    count++;
+                    i++;
+                }
+                // 反方向探查
+                i = 1;
+                while (r - dr*i >= 0 && r - dr*i < C4_ROWS && c - dc*i >= 0 && c - dc*i < C4_COLS && c4BoardState[r - dr*i][c - dc*i] === player) {
+                    count++;
+                    i++;
+                }
+                
+                if (count >= 4) return true;
+            }
+            return false;
         }
         
-        window.onload = () => {};
+        function handleC4Win(player) {
+            c4GameActive = false;
+            const statusTxt = document.getElementById('c4-status');
+            
+            if (player === 'red') {
+                c4RedScore++;
+                statusTxt.textContent = '🎉 🔴 紅色獲得勝利！';
+                statusTxt.style.color = '#ef4444';
+            } else {
+                c4GreenScore++;
+                statusTxt.textContent = '🎉 🟢 綠色獲得勝利！';
+                statusTxt.style.color = '#22c55e';
+            }
+            
+            document.getElementById('red-score').textContent = c4RedScore;
+            document.getElementById('green-score').textContent = c4GreenScore;
+        }
+        
+        // 四子棋 AI 機制 (進攻與防守預測)
+        function computerC4Move() {
+            if (!c4GameActive || c4CurrentPlayer !== 'green') return;
+            
+            // 輔助函數：模擬測試某個 Column 能否達成贏局
+            function findWinningColumn(player) {
+                for (let c = 0; c < C4_COLS; c++) {
+                    let r = -1;
+                    for (let row = C4_ROWS - 1; row >= 0; row--) {
+                        if (c4BoardState[row][c] === null) { r = row; break; }
+                    }
+                    if (r !== -1) {
+                        c4BoardState[r][c] = player;
+                        let isWin = checkC4Win(r, c, player);
+                        c4BoardState[r][c] = null; // 復原
+                        if (isWin) return c;
+                    }
+                }
+                return -1;
+            }
+            
+            // 1. 進攻優先：檢查 AI (green) 能不能當下一子就贏
+            let aiWinCol = findWinningColumn('green');
+            if (aiWinCol !== -1) { makeC4Move(aiWinCol); return; }
+            
+            // 2. 防守次之：檢查 玩家 (red) 有沒有當下一子就贏的威脅，有的話立刻封堵
+            let playerWinCol = findWinningColumn('red');
+            if (playerWinCol !== -1) { makeC4Move(playerWinCol); return; }
+            
+            // 3. 隨機/智力選擇：優先選擇中間區域（第 2, 3, 4 行）以獲取策略優勢
+            const preferredCols = [3, 2, 4, 1, 5, 0, 6];
+            const validCols = preferredCols.filter(c => c4BoardState[0][c] === null);
+            
+            if (validCols.length > 0) {
+                // 有中間行可選時，較高機率選前面的優勢行
+                makeC4Move(validCols[0]);
+            }
+        }
+        
+        function updateC4StatusUI() {
+            const statusTxt = document.getElementById('c4-status');
+            if (c4CurrentPlayer === 'red') {
+                statusTxt.textContent = "紅色的回合 🔴";
+                statusTxt.style.color = "#ef4444";
+            } else {
+                statusTxt.textContent = "綠色的回合 🟢";
+                statusTxt.style.color = "#22c55e";
+            }
+        }
+        
+        function setC4Mode(mode) {
+            c4Mode = mode;
+            document.getElementById('c4-pve-btn').classList.toggle('active', mode === 'pve');
+            document.getElementById('c4-pvp-btn').classList.toggle('active', mode === 'pvp');
+            initConnect4();
+        }
+        
+        function resetC4Game() { initConnect4(); }
+        function resetC4Match() {
+            c4RedScore = c4GreenScore = 0;
+            document.getElementById('red-score').textContent = '0';
+            document.getElementById('green-score').textContent = '0';
+            initConnect4();
+        }
     </script>
 </body>
 </html>
