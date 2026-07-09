@@ -58,6 +58,14 @@
             background: #f59e0b;
             box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
         }
+
+        .select-container {
+            margin: 10px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
         
         /* ==================== 井字過三關樣式 ==================== */
         .board {
@@ -140,9 +148,11 @@
         </div>
     </div>
 
+    <!-- 遊戲區域 -->
     <div id="game-area">
         <button onclick="backToMenu()" style="margin:15px; background: #64748b; color: white;">← 返回選單</button>
         
+        <!-- 井字過三關 -->
         <div id="tictactoe-container">
             <h2>井字過三關</h2>
             <div style="margin:15px 0">
@@ -159,12 +169,21 @@
             <button onclick="resetTicMatch()">重置比賽</button>
         </div>
         
+        <!-- 四子棋區域 -->
         <div id="connect4-container" style="display:none">
             <h2>🔴 四子棋 🟢</h2>
             <div style="margin:15px 0">
                 <button onclick="setC4Mode('pve')" id="c4-pve-btn" class="mode-btn active">對戰電腦</button>
                 <button onclick="setC4Mode('pvp')" id="c4-pvp-btn" class="mode-btn">雙人對戰</button>
             </div>
+
+            <!-- 🛠️ 新增：選擇誰先手區域 (僅在對戰電腦時有效) -->
+            <div id="c4-order-container" class="select-container">
+                <span style="font-size: 18px;">誰先開始：</span>
+                <button onclick="setC4FirstPlayer('player')" id="first-player-btn" class="mode-btn active" style="padding: 6px 18px; font-size: 16px;">玩家先手 (🔴)</button>
+                <button onclick="setC4FirstPlayer('ai')" id="first-ai-btn" class="mode-btn" style="padding: 6px 18px; font-size: 16px;">AI 先手 (🟢)</button>
+            </div>
+
             <div style="display:flex;justify-content:center;gap:50px;margin:10px 0;font-size:20px">
                 <div>紅色 (Red): <span id="red-score">0</span></div>
                 <div>綠色 (Green): <span id="green-score">0</span></div>
@@ -197,6 +216,7 @@
         let c4GameActive = true;
         let c4RedScore = 0, c4GreenScore = 0;
         let c4Mode = 'pve';
+        let c4FirstPlayerSetting = 'player'; // 'player' 或 'ai'
         
         // ==================== 主選單邏輯 ====================
         function startGame(game) {
@@ -327,10 +347,22 @@
             for (let r = 0; r < C4_ROWS; r++) {
                 c4BoardState.push(Array(C4_COLS).fill(null));
             }
-            c4CurrentPlayer = 'red';
+            
+            // 根據設定決定誰先手
+            if (c4Mode === 'pve' && c4FirstPlayerSetting === 'ai') {
+                c4CurrentPlayer = 'green'; // AI 先手
+            } else {
+                c4CurrentPlayer = 'red'; // 玩家先手（或雙人模式預設紅先）
+            }
+            
             c4GameActive = true;
             updateC4StatusUI();
             createC4BoardUI();
+
+            // 如果是 AI 先手，觸發 AI 行動
+            if (c4Mode === 'pve' && c4CurrentPlayer === 'green') {
+                setTimeout(computerC4Move, 400);
+            }
         }
         
         function createC4BoardUI() {
@@ -381,7 +413,7 @@
             updateC4StatusUI();
             
             if (c4Mode === 'pve' && c4CurrentPlayer === 'green') {
-                setTimeout(computerC4Move, 200); // 縮短延遲，讓運算感覺更流暢
+                setTimeout(computerC4Move, 200); 
             }
         }
         
@@ -431,20 +463,37 @@
             document.getElementById('green-score').textContent = c4GreenScore;
         }
         
+        // 🛠️ 新增：控制先手的設定函數
+        function setC4FirstPlayer(first) {
+            c4FirstPlayerSetting = first;
+            document.getElementById('first-player-btn').classList.toggle('active', first === 'player');
+            document.getElementById('first-ai-btn').classList.toggle('active', first === 'ai');
+            initConnect4();
+        }
+
+        function setC4Mode(mode) {
+            c4Mode = mode;
+            document.getElementById('c4-pve-btn').classList.toggle('active', mode === 'pve');
+            document.getElementById('c4-pvp-btn').classList.toggle('active', mode === 'pvp');
+            
+            // 雙人對戰時隱藏先手按鈕，對戰電腦時顯示
+            document.getElementById('c4-order-container').style.display = mode === 'pve' ? 'flex' : 'none';
+            
+            initConnect4();
+        }
+        
         // ==================== 🧠 終極大師級 AI (Minimax + Alpha-Beta 剪枝) ====================
         function computerC4Move() {
             if (!c4GameActive || c4CurrentPlayer !== 'green') return;
             
-            // 設定搜尋深度：預測未來的步數。 5 步兼顧硬體效能與極高的智商。
             const MAX_DEPTH = 5; 
             let bestScore = -Infinity;
             let bestCols = [];
             
-            // 將所有可落子的列，按中線優先排序（優化 Alpha-Beta 剪枝效率）
             const colOrder = [3, 2, 4, 1, 5, 0, 6];
             const validCols = colOrder.filter(c => getLowestEmptyRow(c4BoardState, c) !== -1);
             
-            // 特殊開局優化：如果是第一步或第二步，直接拿中線
+            // 全空棋盤時的最佳開局：直接霸占中線
             if (validCols.includes(3) && c4BoardState[C4_ROWS-1][3] === null) {
                 makeC4Move(3);
                 return;
@@ -453,13 +502,8 @@
             for (let c of validCols) {
                 let r = getLowestEmptyRow(c4BoardState, c);
                 
-                // 模擬電腦落子
                 c4BoardState[r][c] = 'green';
-                
-                // 呼叫 minimax 評估此步在未來 5 步後的對抗分數
                 let score = minimax(c4BoardState, MAX_DEPTH - 1, -Infinity, Infinity, false);
-                
-                // 還原棋盤
                 c4BoardState[r][c] = null;
                 
                 if (score > bestScore) {
@@ -470,29 +514,25 @@
                 }
             }
             
-            // 從表現最好的列中隨機挑選一個
             const finalCol = bestCols[Math.floor(Math.random() * bestCols.length)];
             makeC4Move(finalCol);
         }
         
-        // Minimax 核心遞迴函數
         function minimax(board, depth, alpha, beta, isMaximizing) {
-            // 終止條件檢查：是否有人贏了，或者達到搜尋深度
             let isGreenWin = checkBoardWin(board, 'green');
             let isRedWin = checkBoardWin(board, 'red');
             let isDraw = board.every(row => row.every(cell => cell !== null));
             
-            if (isGreenWin) return 100000 + depth;   // 電腦獲勝，分數極高，depth 獎勵更快的獲勝
-            if (isRedWin) return -100000 - depth;  // 玩家獲勝，分數極低
+            if (isGreenWin) return 100000 + depth;   
+            if (isRedWin) return -100000 - depth;  
             if (isDraw || depth === 0) {
-                return evaluateEntireBoard(board);  // 達到邊界，返回目前局勢的靜態評估分
+                return evaluateEntireBoard(board);  
             }
             
             const colOrder = [3, 2, 4, 1, 5, 0, 6];
             const validCols = colOrder.filter(c => getLowestEmptyRow(board, c) !== -1);
             
             if (isMaximizing) {
-                // 電腦回合：極大化分數
                 let maxEval = -Infinity;
                 for (let c of validCols) {
                     let r = getLowestEmptyRow(board, c);
@@ -501,11 +541,10 @@
                     board[r][c] = null;
                     maxEval = Math.max(maxEval, evaluation);
                     alpha = Math.max(alpha, evaluation);
-                    if (beta <= alpha) break; // Alpha-Beta 剪枝
+                    if (beta <= alpha) break; 
                 }
                 return maxEval;
             } else {
-                // 玩家回合：極小化分數（假設玩家每一步都下出最聰明的棋）
                 let minEval = Infinity;
                 for (let c of validCols) {
                     let r = getLowestEmptyRow(board, c);
@@ -514,13 +553,12 @@
                     board[r][c] = null;
                     minEval = Math.min(minEval, evaluation);
                     beta = Math.min(beta, evaluation);
-                    if (beta <= alpha) break; // Alpha-Beta 剪枝
+                    if (beta <= alpha) break; 
                 }
                 return minEval;
             }
         }
         
-        // 全域勝負檢查（用於 Minimax 虛擬棋盤）
         function checkBoardWin(board, player) {
             for (let r = 0; r < C4_ROWS; r++) {
                 for (let c = 0; c < C4_COLS; c++) {
@@ -532,38 +570,32 @@
             return false;
         }
         
-        // 評估整個棋盤當前對綠色（電腦）的有利程度
         function evaluateEntireBoard(board) {
             let score = 0;
             
-            // 中線基礎權重分
             for (let r = 0; r < C4_ROWS; r++) {
                 if (board[r][3] === 'green') score += 4;
                 if (board[r][3] === 'red') score -= 4;
             }
             
-            // 水平區間窗口評分 (4個格子為一個單位)
             for (let r = 0; r < C4_ROWS; r++) {
                 for (let c = 0; c < C4_COLS - 3; c++) {
                     score += evaluateWindow([board[r][c], board[r][c+1], board[r][c+2], board[r][c+3]]);
                 }
             }
             
-            // 垂直區間窗口評分
             for (let c = 0; c < C4_COLS; c++) {
                 for (let r = 0; r < C4_ROWS - 3; r++) {
                     score += evaluateWindow([board[r][c], board[r+1][c], board[r+2][c], board[r+3][c]]);
                 }
             }
             
-            // 斜下區間窗口評分 (\)
             for (let r = 0; r < C4_ROWS - 3; r++) {
                 for (let c = 0; c < C4_COLS - 3; c++) {
                     score += evaluateWindow([board[r][c], board[r+1][c+1], board[r+2][c+2], board[r+3][c+3]]);
                 }
             }
             
-            // 斜上區間窗口評分 (/)
             for (let r = 3; r < C4_ROWS; r++) {
                 for (let c = 0; c < C4_COLS - 3; c++) {
                     score += evaluateWindow([board[r][c], board[r-1][c+1], board[r-2][c+2], board[r-3][c+3]]);
@@ -573,7 +605,6 @@
             return score;
         }
         
-        // 針對長度為 4 的切片區間評分
         function evaluateWindow(window) {
             let score = 0;
             let greenCount = window.filter(cell => cell === 'green').length;
@@ -584,7 +615,7 @@
             else if (greenCount === 3 && emptyCount === 1) score += 50;
             else if (greenCount === 2 && emptyCount === 2) score += 10;
             
-            if (redCount === 3 && emptyCount === 1) score -= 80;  // 加重封堵玩家活三的權重
+            if (redCount === 3 && emptyCount === 1) score -= 80;  
             else if (redCount === 2 && emptyCount === 2) score -= 15;
             
             return score;
@@ -599,13 +630,6 @@
                 statusTxt.textContent = "綠色的回合 🟢";
                 statusTxt.style.color = "#22c55e";
             }
-        }
-        
-        function setC4Mode(mode) {
-            c4Mode = mode;
-            document.getElementById('c4-pve-btn').classList.toggle('active', mode === 'pve');
-            document.getElementById('c4-pvp-btn').classList.toggle('active', mode === 'pvp');
-            initConnect4();
         }
         
         function resetC4Game() { initConnect4(); }
